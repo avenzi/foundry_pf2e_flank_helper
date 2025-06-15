@@ -1,11 +1,13 @@
 const MODULE_NAME = "flank_helper"
-const DEBUG = true
+const DEBUG = false
 
 
 // TODO how to perform an update when a user activates Lunge or a spell effect?
 //  Tried hooks: updateActor, applyTokenStatusEffect, applyActiveEffect, modifyTokenAttribute
 //  Found that dropActorSheetData will trigger when a potion effect is dragged onto a token,
 //   but not when it's deleted or if done from a different character's sheet
+//  Was able to detect Lunge change when toggling the checkbox, but this doesn't update it for other people.
+
 
 // Utilities
 function log(message) {
@@ -27,6 +29,10 @@ Hooks.on("ready", function() {
     for (let token of canvas.tokens.placeables) {
         token.flank_helper = new FlankHelper(token)
     }
+
+    // Detect when attack options are toggled (like Lunge)
+    $(document).on("click", "div.actions-container input", () => update(50))
+
 });
 Hooks.on("createToken", (document, options, userID) => {
     // new FlakHelper for any new tokens
@@ -53,9 +59,7 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
         let pos = document.object.position
         if (pos.x === x && pos.y === y) {
             clearInterval(checkInterval);
-            for (let token of canvas.tokens.placeables) {
-                token.flank_helper.update_all()
-            }
+            update()
         }
     }, 300);  // 200 was a bit too fast for some updates, 300 seems good for most things
 })
@@ -63,7 +67,7 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
 // Hooks.on("updateActor", function (document, changed, options, userID) {console.log("UPDATED:", document, changed, options, userID)})
 // Hooks.on("applyTokenStatusEffect", function (token, status, active) {console.log("EFFECT: ", token, status, active)})
 // Hooks.on("modifyTokenAttribute", function (data, updates, actor) {console.log("MODIFY: ", data, updates, actor)})
-// Hooks.on("applyActiveEffect", function (actor, change, current, delta, changes) {console.log("ACTIVEL: ", actor, changes, current, delta, changes)})
+// Hooks.on("applyActiveEffect", function (actor, change, current, delta, changes) {console.log("ACTIVE: ", actor, changes, current, delta, changes)})
 //
 // Hooks.on("dropActorSheetData", function (actor, sheet, data) {
 //     // This hook is called when an effect is dragged onto a token
@@ -75,6 +79,15 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
 
 // Hooks.on("stopToken", function () {console.log("WHY DOESNT THIS WORK")})
 
+
+function update(delay=0) {
+    // Update all currently controlled tokens after a delay
+    setTimeout(() => {
+        for (let token of canvas.tokens.placeables) {
+            token.flank_helper?.update_all()
+        }
+    }, delay);
+}
 
 /**
  * Handler class that attaches to all tokens in the scene.
@@ -145,6 +158,7 @@ class FlankHelper {
 
     update_all() {
         this.clear()  // clear existing graphics
+        if (!this.enabled) return
 
         // Update the flanking helper on all allies
         for (let token of canvas.tokens.placeables) {
