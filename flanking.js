@@ -487,11 +487,11 @@ class FlankHelper {
                 out_of_reach_counter = 0  // reset
                 if (this.can_place(token, square)) {  // can the token be placed at this square
                     result.push(structuredClone(square))  // this square is a valid location
-                    //this.draw_dot(square, CONFIG.Canvas.dispositionColors.FRIENDLY)
+                    if (get_settings('debug')) this.draw_dot(square, CONFIG.Canvas.dispositionColors.PARTY)
                 }
             } else {
                 out_of_reach_counter += 1/layer
-                //this.draw_dot(square, CONFIG.Canvas.dispositionColors.HOSTILE)
+                if (get_settings('debug')) this.draw_dot(square, CONFIG.Canvas.dispositionColors.HOSTILE)
             }
 
             square.x += directions[direction][0]
