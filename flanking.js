@@ -225,7 +225,7 @@ class FlankHelper {
         // Update the indicators for all allied tokens
         for (let token of canvas.tokens.placeables) {
             if (this.token === token) continue  // ignore self
-            if (this.token.actor.isAllyOf(token.actor)) this.update(token)
+            if (this.is_ally(this.token, token)) this.update(token)
         }
     }
     update(target_token) {
@@ -239,9 +239,7 @@ class FlankHelper {
         // Get all enemy tokens in reach
         let enemies = []
         for (let token of canvas.tokens.placeables) {
-            if (token.actor.isAllyOf(this.token.actor)) continue  // ignore if an ally
-            if (this.token === token) continue  // ignore if same token
-            if (this.token.actor === token.actor) continue  // ignore if same actor (doesn't account as an ally)
+            if (this.is_ally(this.token, token)) continue
             if (this.in_reach(target_token, token)) enemies.push(token)
         }
 
@@ -390,6 +388,10 @@ class FlankHelper {
         }
         return false
     }
+    is_ally(token_a, token_b) {
+        // Check if these tokens are considered allies.
+        return token_a.actor.alliance === token_b.actor.alliance;
+    }
     get_squares_in_reach(token, square=null) {
         // Get all squares within reach of the token
         // Optionally provide a different position than the token
@@ -425,47 +427,7 @@ class FlankHelper {
         return squares
     }
 
-    is_flanking(flankee, token_a, token_b, token_a_square=null, token_b_square=null) {
-        // Whether the flankee is flanked by token_a and token_b, with optionally specified positions
-        if (token_a_square === null) token_a_square = this.get_token_square(token_a)
-        if (token_b_square === null) token_b_square = this.get_token_square(token_b)
 
-        // Centers in pixel coords for raycasts
-        let token_b_center = this.get_token_center(token_b, token_b_square)
-        let token_a_center = this.get_token_center(token_a, token_a_square)
-        token_a_center = this.square_to_pixel(token_a_center)
-        token_b_center = this.square_to_pixel(token_b_center)
-
-        const intersects = (side) => foundry.utils.lineSegmentIntersects(token_a_center, token_b_center, side.A || side.a, side.B || side.b);
-
-        // check for edges. Search only within a rect between the two tokens.
-        let min_x = Math.min(token_a_center.x, token_b_center.x)
-        let min_y = Math.min(token_a_center.y, token_b_center.y)
-        let width = Math.abs(token_a_center.x-token_b_center.x)
-        let height = Math.abs(token_a_center.y-token_b_center.y)
-        let rect = new PIXI.Rectangle(min_x, min_y, width, height)
-        //this.layer.beginFill(0x000000, 0).lineStyle(this.thickness*2, CONFIG.Canvas.dispositionColors.CONTROLLED).drawRect(min_x, min_y, width, height)
-        let edges = canvas.edges.getEdges(rect)
-        for (let edge of edges) {
-            if (intersects(edge)) {
-                if (get_settings('debug')) this.layer.lineStyle(this.thickness, CONFIG.Canvas.dispositionColors.HOSTILE, 0.5).moveTo(edge.a.x, edge.a.y).lineTo(edge.b.x, edge.b.y);
-                return false
-            }
-        }
-
-        // check reach
-        if (!this.in_reach(token_a, flankee, token_a_square)) return false
-        if (!this.in_reach(token_b, flankee, token_b_square)) return false
-
-        const { bounds } = flankee;
-        const Ray = foundry.canvas.geometry.Ray;
-        const left = new Ray({ x: bounds.left, y: bounds.top }, { x: bounds.left, y: bounds.bottom });
-        const right = new Ray({ x: bounds.right, y: bounds.top }, { x: bounds.right, y: bounds.bottom });
-        const top = new Ray({ x: bounds.left, y: bounds.top }, { x: bounds.right, y: bounds.top });
-        const bottom = new Ray({ x: bounds.left, y: bounds.bottom }, { x: bounds.right, y: bounds.bottom });
-
-        return (intersects(left) && intersects(right)) || (intersects(top) && intersects(bottom));
-    }
     get_positions_in_reach(token, enemy) {
         // Find the possible locations that a token can be such that it can reach an enemy token
         // We do this by iterating through a spiralling pattern of squares and testing whether the token can be placed there, and still be in reach.
@@ -545,5 +507,45 @@ class FlankHelper {
             this.draw_dot(token_a_center, color)
             this.draw_dot(token_b_center, color)
         }
+    }
+    is_flanking(flankee, token_a, token_b, token_a_square=null, token_b_square=null) {
+        // Whether the flankee is flanked by token_a and token_b, with optionally specified positions
+        if (token_a_square === null) token_a_square = this.get_token_square(token_a)
+        if (token_b_square === null) token_b_square = this.get_token_square(token_b)
+
+        // Centers in pixel coords for raycasts
+        let token_b_center = this.get_token_center(token_b, token_b_square)
+        let token_a_center = this.get_token_center(token_a, token_a_square)
+        token_a_center = this.square_to_pixel(token_a_center)
+        token_b_center = this.square_to_pixel(token_b_center)
+
+        const intersects = (side) => foundry.utils.lineSegmentIntersects(token_a_center, token_b_center, side.A || side.a, side.B || side.b);
+
+        // check for edges. Search only within a rect between the two tokens.
+        let min_x = Math.min(token_a_center.x, token_b_center.x)
+        let min_y = Math.min(token_a_center.y, token_b_center.y)
+        let width = Math.abs(token_a_center.x-token_b_center.x)
+        let height = Math.abs(token_a_center.y-token_b_center.y)
+        let rect = new PIXI.Rectangle(min_x, min_y, width, height)
+        let edges = canvas.edges.getEdges(rect)
+        for (let edge of edges) {
+            if (intersects(edge)) {
+                if (get_settings('debug')) this.layer.lineStyle(this.thickness, CONFIG.Canvas.dispositionColors.HOSTILE, 0.5).moveTo(edge.a.x, edge.a.y).lineTo(edge.b.x, edge.b.y);
+                return false
+            }
+        }
+
+        // check reach
+        if (!this.in_reach(token_a, flankee, token_a_square)) return false
+        if (!this.in_reach(token_b, flankee, token_b_square)) return false
+
+        const { bounds } = flankee;
+        const Ray = foundry.canvas.geometry.Ray;
+        const left = new Ray({ x: bounds.left, y: bounds.top }, { x: bounds.left, y: bounds.bottom });
+        const right = new Ray({ x: bounds.right, y: bounds.top }, { x: bounds.right, y: bounds.bottom });
+        const top = new Ray({ x: bounds.left, y: bounds.top }, { x: bounds.right, y: bounds.top });
+        const bottom = new Ray({ x: bounds.left, y: bounds.bottom }, { x: bounds.right, y: bounds.bottom });
+
+        return (intersects(left) && intersects(right)) || (intersects(top) && intersects(bottom));
     }
 }
