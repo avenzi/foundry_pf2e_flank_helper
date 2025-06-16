@@ -11,22 +11,20 @@ const MODULE_NAME = "flank-helper"
 Hooks.on("init", init_settings)
 Hooks.on("ready", function() {
     debug("Creating FlankHelper for all tokens...")
-    // create a new FlankHelper on each token
-    for (let token of canvas.tokens.placeables) {
-        token.flank_helper = new FlankHelper(token)
-    }
+    init_auto_refresh()  // start the auto-refresh loop
 
     // Detect when attack options are toggled (like Lunge)
-    $(document).on("click", "div.actions-container input", () => update(50))
-
-    // start the auto-refresh loop
-    init_auto_refresh()
+    $(document).on("click", "div.actions-container input", () => update_all(50))
 });
+Hooks.on("canvasReady", function () {
+    // This is triggered on start and when the scene changes
+    log("Canvas Ready. Creating FlankHelper for all tokens...")
+    update_all()
+})
 Hooks.on("createToken", (document, options, userID) => {
     // When a new token is created, add a FlankHelper to it and update all others
     debug("New token: "+ document.name)
-    document.object.flank_helper = new FlankHelper(document.object)
-    update()
+    update_all()
 })
 Hooks.on("preDeleteToken", (document, options, userID) => {
     // Before a token is deleted, clear its flank helper graphics
@@ -36,7 +34,7 @@ Hooks.on("preDeleteToken", (document, options, userID) => {
 Hooks.on("deleteToken", (document, options, userID) => {
     // After a token is deleted, update all other tokens FlankHelpers
     debug("Deleted token: "+document.name)
-    update()
+    update_all()
 })
 
 Hooks.on("renderTokenHUD", (_app, html, data) => {
@@ -58,7 +56,7 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
         let pos = document.object.position
         if (pos.x === x && pos.y === y) {
             clearInterval(checkInterval);
-            update()
+            update_all()
         }
     }, 300);  // 200 was a bit too fast for some updates, 300 seems good for most things
 })
@@ -67,14 +65,14 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
 // Hooks.on("applyTokenStatusEffect", function (token, status, active) {console.log("EFFECT: ", token, status, active)})
 // Hooks.on("modifyTokenAttribute", function (data, updates, actor) {console.log("MODIFY: ", data, updates, actor)})
 // Hooks.on("applyActiveEffect", function (actor, change, current, delta, changes) {console.log("ACTIVE: ", actor, changes, current, delta, changes)})
-//
-// Hooks.on("dropActorSheetData", function (actor, sheet, data) {
-//     // This hook is called when an effect is dragged onto a token
-//     console.log("SHEET: ", actor, sheet, data)
-//     setTimeout(() => {
-//         sheet.token.object.flank_helper.update_all()
-//     }, 200);
-// })
+
+Hooks.on("dropActorSheetData", function (actor, sheet, data) {
+    // This hook is called when an effect is dragged onto a token
+    debug("Sheet Update: ", actor, sheet, data)
+    setTimeout(() => {
+        update_token(sheet.token.object)
+    }, 200);
+})
 
 // Hooks.on("stopToken", function () {console.log("WHY DOESNT THIS WORK")})
 
@@ -100,20 +98,29 @@ function set_setting(key, value) {
 
 
 
-function update(delay=0) {
+function update_all(delay=0) {
     // Update all currently controlled tokens after a delay
     if (delay === 0) {
         for (let token of canvas.tokens.placeables) {
-            token.flank_helper?.update_all()
+            update_token(token)
         }
     } else {
         setTimeout(() => {
             for (let token of canvas.tokens.placeables) {
-                token.flank_helper?.update_all()
+                update_token(token)
             }
         }, delay);
     }
 }
+function update_token(token) {
+    // Update the FlankHelper for a given token, initializing it if needed
+    if (!token) return
+    if (!token.flank_helper) {
+        token.flank_helper = new FlankHelper(token)
+    }
+    token.flank_helper.update_all()
+}
+
 
 function init_settings() {
     game.settings.register(MODULE_NAME, 'auto-refresh-indicators', {
@@ -132,7 +139,7 @@ function init_settings() {
         config: true,
         default: false,
         type: Boolean,
-        onChange: update
+        onChange: update_all
     })
 }
 
@@ -146,7 +153,7 @@ function init_auto_refresh() {
         clearInterval(cancel_auto_refresh);
     }
     cancel_auto_refresh = setInterval(() => {
-        update()
+        update_all()
     }, interval * 1000);
 
 }
