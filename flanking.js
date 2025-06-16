@@ -39,6 +39,11 @@ Hooks.on("createToken", (document, options, userID) => {
     log("New token: "+ document.name)
     document.object.flank_helper = new FlankHelper(document.object)
 })
+Hooks.on("preDeleteToken", (document, options, userID) => {
+    // clear the flank helper when token deleted
+    log("Deleted Token: "+document.name)
+    document.object.flank_helper.clear()
+})
 
 Hooks.on("renderTokenHUD", (_app, html, data) => {
     if (!canvas || !canvas.tokens) return;

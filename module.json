@@ -2,7 +2,7 @@
   "id": "flank-helper",
   "title": "PF2e Flanking Helper",
   "description": "Visualize flanking positions for PF2e",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "url": "https://github.com/avenzi/foundry_pf2e_flank_helper",
   "manifest": "https://github.com/avenzi/foundry_pf2e_flank_helper/releases/latest/download/module.json",
   "download": "https://github.com/avenzi/foundry_pf2e_flank_helper/archive/refs/heads/master.zip",
