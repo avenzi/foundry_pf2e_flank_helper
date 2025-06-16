@@ -16,6 +16,10 @@ Manifest URL: https://github.com/avenzi/foundry_pf2e_flank_helper/raw/master/mod
 
 In this example, we see the possible flanking positions of the medium-sized ally to the right, who has a 10ft reach. The enemy in the middle is currently flanked.
 
+![](assets/flank_example_2.png)
+
+From the large-sized ally's perspective (who also has a 10ft reach), we see the possible flanking positions on the left, with each dot representing where you would place the center of the token.
+
 ## TODO
 - Some edge types should not block flanking?
 
