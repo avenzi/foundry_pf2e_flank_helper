@@ -469,7 +469,6 @@ class FlankHelper {
                 }
             } else {
                 out_of_reach_counter += 1/layer
-                if (get_settings('debug')) this.draw_dot(square, CONFIG.Canvas.dispositionColors.HOSTILE)
             }
 
             square.x += directions[direction][0]
