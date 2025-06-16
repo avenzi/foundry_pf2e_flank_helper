@@ -36,8 +36,28 @@ Hooks.on("deleteToken", (document, options, userID) => {
     debug("Deleted token: "+document.name)
     update_all()
 })
+Hooks.on("updateToken", (document, options, userID) => {
+    // triggered when a token is hidden/unhidden, and when a token starts moving
+    debug("Token Updated: "+document.name)
+    update_all()
+})
+Hooks.on("moveToken", (document, movement, operation, user) => {
+    // When a token moves, all other tokens need to update their indicators
+    // This is also triggered when a token changes size, which is useful.
+    let {x, y} = movement.destination
 
+    // for some reason the "stopToken" hook doesn't work, so I gotta do this stupid callback to constantly check if it's finished
+    let id = setInterval(() => {
+        let pos = document.object.position
+        if (pos.x === x && pos.y === y) {
+            debug("Token stopped moving: "+document.name)
+            clearInterval(id);
+            update_all()
+        }
+    }, 300);  // 200 was a bit too fast for some updates, 300 seems good for most things
+})
 Hooks.on("renderTokenHUD", (_app, html, data) => {
+    // When a token is right-clicked, showing the HUD
     if (!canvas || !canvas.tokens) return;
     let token = canvas.tokens.get(data._id) ?? null;
     if (!token) {
@@ -46,26 +66,12 @@ Hooks.on("renderTokenHUD", (_app, html, data) => {
     }
     token.flank_helper?.render_hud(html)
 });
-Hooks.on("moveToken", (document, movement, operation, user) => {
-    // When a token moves, we need to go to all the OTHER tokens and update their flank helpers for this token.
-    // This is also triggered when a token changes size, which is useful.
-    let {x, y} = movement.destination
-
-    // for some reason the "stopToken" hook doesn't work, so I gotta do this stupid callback to constantly check if it's finished
-    let checkInterval = setInterval(() => {
-        let pos = document.object.position
-        if (pos.x === x && pos.y === y) {
-            clearInterval(checkInterval);
-            update_all()
-        }
-    }, 300);  // 200 was a bit too fast for some updates, 300 seems good for most things
-})
 
 // Hooks.on("updateActor", function (document, changed, options, userID) {console.log("UPDATED:", document, changed, options, userID)})
 // Hooks.on("applyTokenStatusEffect", function (token, status, active) {console.log("EFFECT: ", token, status, active)})
 // Hooks.on("modifyTokenAttribute", function (data, updates, actor) {console.log("MODIFY: ", data, updates, actor)})
 // Hooks.on("applyActiveEffect", function (actor, change, current, delta, changes) {console.log("ACTIVE: ", actor, changes, current, delta, changes)})
-
+// Hooks.on("stopToken", function () {console.log("WHY DOESNT THIS WORK")})
 Hooks.on("dropActorSheetData", function (actor, sheet, data) {
     // This hook is called when an effect is dragged onto a token
     debug("Sheet Update: ", actor, sheet, data)
@@ -73,8 +79,6 @@ Hooks.on("dropActorSheetData", function (actor, sheet, data) {
         update_token(sheet.token.object)
     }, 200);
 })
-
-// Hooks.on("stopToken", function () {console.log("WHY DOESNT THIS WORK")})
 
 
 // Utilities
@@ -229,6 +233,8 @@ class FlankHelper {
         this.clear()  // clear existing graphics
         if (!this.enabled) return
 
+        // !!(((this.token.controlled) && !(this.token.isPreview || this.token.isAnimating));
+
         // Update the indicators for all allied tokens
         for (let token of canvas.tokens.placeables) {
             if (this.token === token) continue  // ignore self
@@ -239,14 +245,17 @@ class FlankHelper {
         // Draw the flank helpers for the given allied token
         let flank_data = this.token.actor.system.attributes.flanking
 
-        // canvas.ready && !!canvas.scene && this.#tokenIsEligible;
-        // !!(((this.token.controlled && this.token.isOwner) || (this.token.actor && this.token.actor?.id === game.user.character?.id)) && !(this.token.isPreview || this.token.isAnimating));
         if (!this.enabled) return
+
+        // if this token is hidden and you aren't the GM, don't update
+        if (target_token.document.hidden && !game.users.current.isGM) return
+
 
         // Get all enemy tokens in reach
         let enemies = []
         for (let token of canvas.tokens.placeables) {
             if (this.is_ally(this.token, token)) continue
+            if (token.document.hidden && !game.users.current.isGM) continue  // ignore hidden enemies if not GM
             if (this.in_reach(target_token, token)) enemies.push(token)
         }
 
@@ -395,10 +404,6 @@ class FlankHelper {
         }
         return false
     }
-    is_ally(token_a, token_b) {
-        // Check if these tokens are considered allies.
-        return token_a.actor.alliance === token_b.actor.alliance;
-    }
     get_squares_in_reach(token, square=null) {
         // Get all squares within reach of the token
         // Optionally provide a different position than the token
@@ -432,6 +437,10 @@ class FlankHelper {
             }
         }
         return squares
+    }
+    is_ally(token_a, token_b) {
+        // Check if these tokens are considered allies.
+        return token_a.actor.alliance === token_b.actor.alliance;
     }
 
 

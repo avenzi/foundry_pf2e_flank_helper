@@ -23,5 +23,5 @@ From the large-sized ally's perspective (who also has a 10ft reach), we see the 
 ## TODO
 - Some edge types should not block flanking?
 - Need to figure out how to trigger update on things like applying/deleting effects (the associated hooks don't seem to work)
-- 
+- Trigger update on token changing alliance
 
