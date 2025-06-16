@@ -1,0 +1,14 @@
+{
+  "flank-helper": {
+    "Settings": {
+      "auto-refresh-indicators": {
+        "name": "Auto Refresh Flanking Indicators",
+        "hint": "Number of seconds to auto-update all flanking indicators. Set to 0 to disable."
+      },
+      "debug": {
+        "name": "Debug Mode",
+        "hint": "Enable additional console outputs and visual indicators."
+      }
+    }
+  }
+}

@@ -1,6 +1,4 @@
-const MODULE_NAME = "flank_helper"
-const DEBUG = false
-
+const MODULE_NAME = "flank-helper"
 
 // TODO how to perform an update when a user activates Lunge or a spell effect?
 //  Tried hooks: updateActor, applyTokenStatusEffect, applyActiveEffect, modifyTokenAttribute
@@ -9,22 +7,10 @@ const DEBUG = false
 //  Was able to detect Lunge change when toggling the checkbox, but this doesn't update it for other people.
 
 
-// Utilities
-function log(message) {
-    if (DEBUG) console.log("[Flank Helper]:", message)
-}
-function error(message) {
-    console.error("[Flank Helper]:", message)
-}
-function get_settings(MODULE_NAME, key) {
-    return game.settings.get(MODULE_NAME, key)
-}
-function set_setting(key, value) {
-    game.settings.set(MODULE_NAME, key, value)
-}
 
+Hooks.on("init", init_settings)
 Hooks.on("ready", function() {
-    log("Creating FlankHelper for all tokens...")
+    debug("Creating FlankHelper for all tokens...")
     // create a new FlankHelper on each token
     for (let token of canvas.tokens.placeables) {
         token.flank_helper = new FlankHelper(token)
@@ -33,21 +19,23 @@ Hooks.on("ready", function() {
     // Detect when attack options are toggled (like Lunge)
     $(document).on("click", "div.actions-container input", () => update(50))
 
+    // start the auto-refresh loop
+    init_auto_refresh()
 });
 Hooks.on("createToken", (document, options, userID) => {
     // When a new token is created, add a FlankHelper to it and update all others
-    log("New token: "+ document.name)
+    debug("New token: "+ document.name)
     document.object.flank_helper = new FlankHelper(document.object)
     update()
 })
 Hooks.on("preDeleteToken", (document, options, userID) => {
     // Before a token is deleted, clear its flank helper graphics
-    log("About to delete token: "+document.name)
+    debug("About to delete token: "+document.name)
     document.object.flank_helper.clear()
 })
 Hooks.on("deleteToken", (document, options, userID) => {
     // After a token is deleted, update all other tokens FlankHelpers
-    log("Deleted token: "+document.name)
+    debug("Deleted token: "+document.name)
     update()
 })
 
@@ -91,6 +79,27 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
 // Hooks.on("stopToken", function () {console.log("WHY DOESNT THIS WORK")})
 
 
+// Utilities
+function log(message) {
+    console.log("[Flank Helper]:", message)
+}
+function debug(message) {
+    if (get_settings('debug')) {
+        console.log("[Flank Helper][DEBUG]:", message)
+    }
+}
+function error(message) {
+    console.error("[Flank Helper]:", message)
+}
+function get_settings(key) {
+    return game.settings.get(MODULE_NAME, key)
+}
+function set_setting(key, value) {
+    game.settings.set(MODULE_NAME, key, value)
+}
+
+
+
 function update(delay=0) {
     // Update all currently controlled tokens after a delay
     if (delay === 0) {
@@ -104,6 +113,42 @@ function update(delay=0) {
             }
         }, delay);
     }
+}
+
+function init_settings() {
+    game.settings.register(MODULE_NAME, 'auto-refresh-indicators', {
+        name: `${MODULE_NAME}.Settings.auto-refresh-indicators.name`,
+        hint: `${MODULE_NAME}.Settings.auto-refresh-indicators.hint`,
+        scope: 'client',
+        config: true,
+        default: 5,
+        type: Number,
+        onChange: init_auto_refresh
+    })
+    game.settings.register(MODULE_NAME, 'debug', {
+        name: `${MODULE_NAME}.Settings.debug.name`,
+        hint: `${MODULE_NAME}.Settings.debug.hint`,
+        scope: 'client',
+        config: true,
+        default: false,
+        type: Boolean,
+        onChange: update
+    })
+}
+
+var cancel_auto_refresh = null;
+function init_auto_refresh() {
+    // Update all flank helpers every number of seconds, according to settings.
+    // Call again to cancel and restart
+    let interval = get_settings('auto-refresh-indicators')
+    if (interval <= 0) return;  // disabled
+    if (cancel_auto_refresh) {
+        clearInterval(cancel_auto_refresh);
+    }
+    cancel_auto_refresh = setInterval(() => {
+        update()
+    }, interval * 1000);
+
 }
 
 /**
@@ -310,7 +355,7 @@ class FlankHelper {
         let actor = token?.document?.actor;
         if (!actor) {
             error(`No actor found for token: ${token?.name || "Unknown"}`);
-            console.log(token)
+            log(token)
             return 5; // Default melee reach for unknown cases.
         }
         return actor.getReach({ action: "attack" })
@@ -336,8 +381,6 @@ class FlankHelper {
         // Optional square for token_a
         let b_occupies = this.get_squares(token_b)
         let a_reaches = this.get_squares_in_reach(token_a, token_a_square)
-        //console.log(token_a.document.name, "REACHES: ", a_reaches)
-        //console.log(token_b.document.name, "OCCUPIES: ", b_occupies)
         for (let square of a_reaches) {
             for (let b_square of b_occupies) {
                 if (square.x === b_square.x && square.y === b_square.y) {
@@ -405,7 +448,7 @@ class FlankHelper {
         let edges = canvas.edges.getEdges(rect)
         for (let edge of edges) {
             if (intersects(edge)) {
-                if (DEBUG) this.layer.lineStyle(this.thickness, CONFIG.Canvas.dispositionColors.HOSTILE, 0.5).moveTo(edge.a.x, edge.a.y).lineTo(edge.b.x, edge.b.y);
+                if (get_settings('debug')) this.layer.lineStyle(this.thickness, CONFIG.Canvas.dispositionColors.HOSTILE, 0.5).moveTo(edge.a.x, edge.a.y).lineTo(edge.b.x, edge.b.y);
                 return false
             }
         }
@@ -504,93 +547,3 @@ class FlankHelper {
         }
     }
 }
-
-
-//
-// /**
-//  * Determine whether this token can flank another—given that they have a flanking buddy on the opposite side
-//  * @param flankee                  The potentially flanked token
-//  * @param context.reach           An optional reach distance specific to this measurement
-//  * @param context.ignoreFlankable Optionally ignore flankable (for flanking highlight) */
-// canFlank(flankee: TokenPF2e, context: { reach?: number; ignoreFlankable?: boolean } = {}): boolean {
-//     const settingDisabled = !game.pf2e.settings.automation.flanking;
-//     const oneIsGMHidden = this.document.hidden || flankee.document.hidden;
-//     if (settingDisabled || oneIsGMHidden || this === flankee) {
-//         return false;
-//     }
-//
-//     // Can the actor flank, and is the flankee flankable?
-//     const actor = this.actor;
-//     const flankable = context.ignoreFlankable || flankee.actor?.attributes.flanking.flankable;
-//     if (!(actor?.attributes.flanking.canFlank && flankable)) return false;
-//
-//     // Only creatures can flank or be flanked
-//     if (!(actor.isOfType("creature") && flankee.actor?.isOfType("creature"))) {
-//         return false;
-//     }
-//
-//     // Allies don't flank each other
-//     if (actor.isAllyOf(flankee.actor)) return false;
-//
-//     const reach = context.reach ?? actor.getReach({ action: "attack" });
-//
-//     return actor.canAttack && reach >= this.distanceTo(flankee, { reach });
-// }
-//
-//
-// /**
-//  * Determine whether this token is in fact flanking another
-//  * @param flankee                  The potentially flanked token
-//  * @param context.reach           An optional reach distance specific to this measurement
-//  * @param context.ignoreFlankable Optionally ignore flankable (for flanking position indicator) */
-// isFlanking(flankee: TokenPF2e, context: { reach?: number; ignoreFlankable?: boolean } = {}): boolean {
-//     const thisActor = this.actor;
-//     if (!(thisActor && this.canFlank(flankee, context))) return false;
-//
-//     const flanking = thisActor.attributes.flanking;
-//
-//     // Finds all possible allies that are allowed to flank, to test their positioning later
-//     // A linked actor can flank with another token of itself (ex: a Thaumaturge with a mirror implement)
-//     const flankingBuddies = canvas.tokens.placeables.filter(
-//         (t) =>
-//             (t.actor?.isAllyOf(thisActor) ||
-//                 (this.document.isLinked && t.actor === thisActor && t.id !== this.id)) &&
-//             t.canFlank(flankee, R.pick(context, ["ignoreFlankable"])),
-//     );
-//     if (flankingBuddies.length === 0) return false;
-//
-//     // The actual "Gang Up" rule or similar
-//     const gangingUp =
-//         flanking.canGangUp.some(
-//             (g) =>
-//                 (typeof g === "number" && g <= flankingBuddies.length) ||
-//                 (g === true && flankingBuddies.length >= 1),
-//         ) || flankingBuddies.some((b) => b.actor?.attributes.flanking.canGangUp.some((g) => g === true));
-//     if (gangingUp) return true;
-//
-//     // The Side By Side feat with tie-in to the PF2e Animal Companion Compendia module
-//     const sideBySide =
-//         this.isAdjacentTo(flankee) &&
-//         flanking.canGangUp.includes("animal-companion") &&
-//         flankingBuddies.some((b) => {
-//             if (!b.actor?.isOfType("character")) return false;
-//             const traits = b.actor.traits;
-//             return traits.has("minion") && !traits.has("construct") && b.isAdjacentTo(flankee);
-//         });
-//     if (sideBySide) return true;
-//
-//     // Support for Eidolons
-//     const kindredFlank =
-//         this.isAdjacentTo(flankee) &&
-//         flanking.canGangUp.includes("eidolon") &&
-//         flankingBuddies.some((b) => {
-//             if (!b.actor?.isOfType("character")) return false;
-//             const traits = b.actor.traits;
-//             return traits.has("eidolon") && b.isAdjacentTo(flankee);
-//         });
-//     if (kindredFlank) return true;
-//
-//     // Find a flanking buddy opposite this token
-//     return flankingBuddies.some((b) => this.onOppositeSides(this, b, flankee));
-// }
-//

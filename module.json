@@ -2,10 +2,10 @@
   "id": "flank-helper",
   "title": "PF2e Flanking Helper",
   "description": "Visualize flanking positions for PF2e",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "url": "https://github.com/avenzi/foundry_pf2e_flank_helper",
-  "manifest": "https://github.com/avenzi/foundry_pf2e_flank_helper/releases/latest/download/module.json",
-  "download": "https://github.com/avenzi/foundry_pf2e_flank_helper/archive/refs/heads/master.zip",
+  "manifest": "https://github.com/avenzi/foundry_pf2e_flank_helper/raw/master/module.json",
+  "download": "https://github.com/avenzi/foundry_pf2e_flank_helper/archive/master.zip",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
@@ -13,7 +13,24 @@
   "authors": [{"name": "avenzi", "flags": {}}],
   "esmodules": ["flanking.js"],
   "relationships": {
-    "systems": [{"id": "pf2e", "type": "system"}]
-  }
+    "systems": [
+      {
+        "id": "pf2e",
+        "type": "system",
+        "compatibility": {
+          "minimum": "7.1.1",
+          "verified": "7.2.0"
+        }
+      }
+    ]
+  },
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json",
+      "flags": {}
+    }
+  ]
 }
 
