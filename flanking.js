@@ -35,14 +35,20 @@ Hooks.on("ready", function() {
 
 });
 Hooks.on("createToken", (document, options, userID) => {
-    // new FlakHelper for any new tokens
+    // When a new token is created, add a FlankHelper to it and update all others
     log("New token: "+ document.name)
     document.object.flank_helper = new FlankHelper(document.object)
+    update()
 })
 Hooks.on("preDeleteToken", (document, options, userID) => {
-    // clear the flank helper when token deleted
-    log("Deleted Token: "+document.name)
+    // Before a token is deleted, clear its flank helper graphics
+    log("About to delete token: "+document.name)
     document.object.flank_helper.clear()
+})
+Hooks.on("deleteToken", (document, options, userID) => {
+    // After a token is deleted, update all other tokens FlankHelpers
+    log("Deleted token: "+document.name)
+    update()
 })
 
 Hooks.on("renderTokenHUD", (_app, html, data) => {
@@ -87,11 +93,17 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
 
 function update(delay=0) {
     // Update all currently controlled tokens after a delay
-    setTimeout(() => {
+    if (delay === 0) {
         for (let token of canvas.tokens.placeables) {
             token.flank_helper?.update_all()
         }
-    }, delay);
+    } else {
+        setTimeout(() => {
+            for (let token of canvas.tokens.placeables) {
+                token.flank_helper?.update_all()
+            }
+        }, delay);
+    }
 }
 
 /**
@@ -165,7 +177,7 @@ class FlankHelper {
         this.clear()  // clear existing graphics
         if (!this.enabled) return
 
-        // Update the flanking helper on all allies
+        // Update the indicators for all allied tokens
         for (let token of canvas.tokens.placeables) {
             if (this.token === token) continue  // ignore self
             if (this.token.actor.isAllyOf(token.actor)) this.update(token)
@@ -182,8 +194,9 @@ class FlankHelper {
         // Get all enemy tokens in reach
         let enemies = []
         for (let token of canvas.tokens.placeables) {
-            if (this.token === token) continue
-            if (token.actor.isAllyOf(this.token.actor)) continue
+            if (token.actor.isAllyOf(this.token.actor)) continue  // ignore if an ally
+            if (this.token === token) continue  // ignore if same token
+            if (this.token.actor === token.actor) continue  // ignore if same actor (doesn't account as an ally)
             if (this.in_reach(target_token, token)) enemies.push(token)
         }
 
