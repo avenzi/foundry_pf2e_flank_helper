@@ -76,7 +76,7 @@ Hooks.on("dropActorSheetData", function (actor, sheet, data) {
     // This hook is called when an effect is dragged onto a token
     debug("Sheet Update: ", actor, sheet, data)
     setTimeout(() => {
-        update_token(sheet.token.object)
+        update_token(sheet?.token?.object)
     }, 200);
 })
 
@@ -136,6 +136,24 @@ function init_settings() {
         type: Number,
         onChange: init_auto_refresh
     })
+    game.settings.register(MODULE_NAME, 'self-conditions-prevent-flanking', {
+        name: `${MODULE_NAME}.Settings.self-conditions-prevent-flanking.name`,
+        hint: `${MODULE_NAME}.Settings.self-conditions-prevent-flanking.hint`,
+        scope: 'client',
+        config: true,
+        default: false,
+        type: Boolean,
+        onChange: update_all
+    })
+    game.settings.register(MODULE_NAME, 'others-conditions-prevent-flanking', {
+        name: `${MODULE_NAME}.Settings.others-conditions-prevent-flanking.name`,
+        hint: `${MODULE_NAME}.Settings.others-conditions-prevent-flanking.hint`,
+        scope: 'client',
+        config: true,
+        default: false,
+        type: Boolean,
+        onChange: update_all
+    })
     game.settings.register(MODULE_NAME, 'debug', {
         name: `${MODULE_NAME}.Settings.debug.name`,
         hint: `${MODULE_NAME}.Settings.debug.hint`,
@@ -152,10 +170,10 @@ function init_auto_refresh() {
     // Update all flank helpers every number of seconds, according to settings.
     // Call again to cancel and restart
     let interval = get_settings('auto-refresh-indicators')
-    if (interval <= 0) return;  // disabled
     if (cancel_auto_refresh) {
         clearInterval(cancel_auto_refresh);
     }
+    if (interval <= 0) return;  // disabled
     cancel_auto_refresh = setInterval(() => {
         update_all()
     }, interval * 1000);
@@ -233,6 +251,14 @@ class FlankHelper {
         this.clear()  // clear existing graphics
         if (!this.enabled) return
 
+        // Ignore if token is hidden and you are not GM
+        if (this.token.document.hidden && !game.users.current.isGM) return
+
+        // if we are accounting for self conditions, check if can flank
+        if (get_settings("self-conditions-prevent-flanking")) {
+            if (!this.can_flank(this.token)) return
+        }
+
         // !!(((this.token.controlled) && !(this.token.isPreview || this.token.isAnimating));
 
         // Update the indicators for all allied tokens
@@ -243,19 +269,21 @@ class FlankHelper {
     }
     update(target_token) {
         // Draw the flank helpers for the given allied token
-        let flank_data = this.token.actor.system.attributes.flanking
-
         if (!this.enabled) return
 
-        // if this token is hidden and you aren't the GM, don't update
+        // Ignore if token is hidden and you are not GM
         if (target_token.document.hidden && !game.users.current.isGM) return
 
+        // if we are accounting for others' conditions, check if can flank
+        if (get_settings("others-conditions-prevent-flanking")) {
+            if (!this.can_flank(target_token)) return
+        }
 
         // Get all enemy tokens in reach
         let enemies = []
         for (let token of canvas.tokens.placeables) {
             if (this.is_ally(this.token, token)) continue
-            if (token.document.hidden && !game.users.current.isGM) continue  // ignore hidden enemies if not GM
+            if (token.document.hidden && !game.users.current.isGM) continue // Token is hidden and you ar enot GM
             if (this.in_reach(target_token, token)) enemies.push(token)
         }
 
@@ -442,7 +470,20 @@ class FlankHelper {
         // Check if these tokens are considered allies.
         return token_a.actor.alliance === token_b.actor.alliance;
     }
+    can_flank(token) {
+        // Whether a token can flank (i.e. doesn't have a condition that prevents flanking)
+        if (!token.actor.system.attributes.flanking.canFlank) return false
+        if (!token.actor.canAttack) return false  // can't attack
+        return true
+    }
+    can_be_flanked(token) {
+        // Whether a token can be flanked
 
+        // whether the token can be flanked, according to foundry (doesn't account for everything)
+        //if (!token.actor.system.attributes.flanking.flankable) return false
+
+        return true
+    }
 
     get_positions_in_reach(token, enemy) {
         // Find the possible locations that a token can be such that it can reach an enemy token

@@ -8,6 +8,14 @@
       "debug": {
         "name": "Debug Mode",
         "hint": "Enable additional console outputs and visual indicators."
+      },
+      "self-conditions-prevent-flanking": {
+        "name": "Account for Own Conditions",
+        "hint": "When active, hide flanking indicators if the selected token's conditions would prevent flanking (e.g. unconscious, stunned, restrained, etc.)."
+      },
+      "others-conditions-prevent-flanking": {
+        "name": "Account for Others' Conditions",
+        "hint": "When active, hide flanking indicators if the ally's conditions would prevent flanking (e.g. unconscious, stunned, restrained, etc.)."
       }
     }
   }
