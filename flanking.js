@@ -266,7 +266,9 @@ class FlankHelper {
             try {
                 if (this.token === token) continue  // ignore self
                 if (this.is_ally(this.token, token)) this.update(token)
-            } catch {}
+            } catch (err) {
+                log(err)
+            }
         }
     }
     update(target_token) {
