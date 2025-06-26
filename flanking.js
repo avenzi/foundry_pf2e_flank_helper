@@ -263,8 +263,10 @@ class FlankHelper {
 
         // Update the indicators for all allied tokens
         for (let token of canvas.tokens.placeables) {
-            if (this.token === token) continue  // ignore self
-            if (this.is_ally(this.token, token)) this.update(token)
+            try {
+                if (this.token === token) continue  // ignore self
+                if (this.is_ally(this.token, token)) this.update(token)
+            } catch {}
         }
     }
     update(target_token) {
@@ -468,19 +470,19 @@ class FlankHelper {
     }
     is_ally(token_a, token_b) {
         // Check if these tokens are considered allies.
-        return token_a.actor.alliance === token_b.actor.alliance;
+        return token_a.actor?.alliance === token_b.actor?.alliance;
     }
     can_flank(token) {
         // Whether a token can flank (i.e. doesn't have a condition that prevents flanking)
-        if (!token.actor.system.attributes.flanking.canFlank) return false
-        if (!token.actor.canAttack) return false  // can't attack
+        if (!token.actor?.system.attributes.flanking.canFlank) return false
+        if (!token.actor?.canAttack) return false  // can't attack
         return true
     }
     can_be_flanked(token) {
         // Whether a token can be flanked
 
         // whether the token can be flanked, according to foundry (doesn't account for everything)
-        //if (!token.actor.system.attributes.flanking.flankable) return false
+        //if (!token.actor?.system.attributes.flanking.flankable) return false
 
         return true
     }
