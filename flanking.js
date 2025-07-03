@@ -118,7 +118,7 @@ function update_all(delay=0) {
 }
 function update_token(token) {
     // Update the FlankHelper for a given token, initializing it if needed
-    if (!token) return
+    if (!token?.actor) return  // if the token doesn't have an actor, don't add a flank helper to it
     if (!token.flank_helper) {
         token.flank_helper = new FlankHelper(token)
     }
