@@ -11,11 +11,15 @@
       },
       "self-conditions-prevent-flanking": {
         "name": "Account for Own Conditions",
-        "hint": "When active, hide flanking indicators if the selected token's conditions would prevent flanking (e.g. unconscious, stunned, restrained, etc.)."
+        "hint": "When active, hide flanking indicators if the selected token's conditions would prevent flanking (e.g. dead, unconscious, stunned, restrained, etc.)."
       },
       "others-conditions-prevent-flanking": {
-        "name": "Account for Others' Conditions",
-        "hint": "When active, hide flanking indicators if the ally's conditions would prevent flanking (e.g. unconscious, stunned, restrained, etc.)."
+        "name": "Account for Ally Conditions",
+        "hint": "When active, hide flanking indicators if the ally's conditions would prevent flanking (e.g. dead, unconscious, stunned, restrained, etc.)."
+      },
+      "enemy-conditions-prevent-flanking": {
+        "name": "Account for Enemy Conditions",
+        "hint": "When active, hide flanking indicators if the enemy's conditions would prevent flanking (e.g. dead, all-around vision, etc.)."
       }
     }
   }

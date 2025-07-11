@@ -154,6 +154,15 @@ function init_settings() {
         type: Boolean,
         onChange: update_all
     })
+    game.settings.register(MODULE_NAME, 'enemy-conditions-prevent-flanking', {
+        name: `${MODULE_NAME}.Settings.enemy-conditions-prevent-flanking.name`,
+        hint: `${MODULE_NAME}.Settings.enemy-conditions-prevent-flanking.hint`,
+        scope: 'client',
+        config: true,
+        default: false,
+        type: Boolean,
+        onChange: update_all
+    })
     game.settings.register(MODULE_NAME, 'debug', {
         name: `${MODULE_NAME}.Settings.debug.name`,
         hint: `${MODULE_NAME}.Settings.debug.hint`,
@@ -288,6 +297,7 @@ class FlankHelper {
         for (let token of canvas.tokens.placeables) {
             if (this.is_ally(this.token, token)) continue
             if (token.document.hidden && !game.users.current.isGM) continue // Token is hidden and you ar enot GM
+            if (get_settings("enemy-conditions-prevent-flanking") && !this.can_be_flanked(token)) continue  // if accounting for enemy conditions
             if (this.in_reach(target_token, token)) enemies.push(token)
         }
 
@@ -474,17 +484,29 @@ class FlankHelper {
         // Check if these tokens are considered allies.
         return token_a.actor?.alliance === token_b.actor?.alliance;
     }
+    is_dead(token) {
+        // is the token dead
+        let effects = token?.actor?.effects ?? []
+        for (let effect of effects) {
+            if (effect?.name === "Dead") return true
+        }
+        return false
+    }
     can_flank(token) {
-        // Whether a token can flank (i.e. doesn't have a condition that prevents flanking)
-        if (!token.actor?.system.attributes.flanking.canFlank) return false
+        // Whether a token can flank (i.e. doesn't have a condition that prevents flanking
+        if (this.is_dead(token)) return false  // is the actor dead?
+        if (!token.actor?.system?.attributes?.flanking?.canFlank) return false
         if (!token.actor?.canAttack) return false  // can't attack
         return true
     }
     can_be_flanked(token) {
         // Whether a token can be flanked
 
+        // is the actor dead?
+        if (this.is_dead(token)) return false
+
         // whether the token can be flanked, according to foundry (doesn't account for everything)
-        //if (!token.actor?.system.attributes.flanking.flankable) return false
+        if (!token.actor?.system?.attributes?.flanking?.flankable) return false
 
         return true
     }
@@ -563,9 +585,9 @@ class FlankHelper {
             // display a line between these two grid positions and indicate any tokens flanked by them
             this.draw_line(token_a_center, token_b_center, color)
 
-            // Draw circles at each end
+            // Draw a circle at token_a's center
             this.draw_dot(token_a_center, color)
-            this.draw_dot(token_b_center, color)
+            //this.draw_dot(token_b_center, color)
         }
     }
     is_flanking(flankee, token_a, token_b, token_a_square=null, token_b_square=null) {
