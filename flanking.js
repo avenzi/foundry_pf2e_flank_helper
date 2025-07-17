@@ -48,11 +48,11 @@ Hooks.on("moveToken", (document, movement, operation, user) => {
 
     // for some reason the "stopToken" hook doesn't work, so I gotta do this stupid callback to constantly check if it's finished
     let id = setInterval(() => {
-        let pos = document.object.position
-        if (pos.x === x && pos.y === y) {
-            debug("Token stopped moving: "+document.name)
+        let pos = document?.object?.position
+        if (pos && pos.x === x && pos.y === y) {
+            debug("Token stopped moving: "+document.name);
             clearInterval(id);
-            update_all()
+            update_all();
         }
     }, 300);  // 200 was a bit too fast for some updates, 300 seems good for most things
 })
